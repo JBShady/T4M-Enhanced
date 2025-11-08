@@ -1451,7 +1451,19 @@ struct __declspec(align(4)) cg_s
 };
 
 typedef void* snd_alias_list_t;
-typedef void* FxEffectDef;
+struct FxEffectDef
+{
+	char* name;
+	int flags;
+	int totalSize;
+	int msecLoopingLife;
+	int elemDefCountLooping;
+	int elemDefCountOneShot;
+	int elemDefCountEmission;
+	unsigned __int8 efPriority;
+	void* elemDefs;
+};
+
 
 enum OffhandClass : __int32
 {
