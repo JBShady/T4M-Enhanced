@@ -3,6 +3,9 @@
 #include "MemoryMgr.h"
 #include <safetyhook.hpp>
 
+#include <unordered_set>
+#include <string_view>
+
 typedef void*(__cdecl* R_CreateDynamicBuffersT)();
 R_CreateDynamicBuffersT R_CreateDynamicBuffers = nullptr;
 
@@ -22,6 +25,10 @@ dvar_t* r_buf_preTessIndexBuffer = nullptr;
 dvar_t* cg_fov_tweaks;
 dvar_t* cg_fov_gun;
 dvar_t* cg_fovScale_gun;
+
+std::vector<std::string> g_containSkipEffects;
+std::vector<std::string> g_exactSkipEffects;
+
 // Raises limits of several buffers, reference taken from iw3xo-dev by xoxor4d https://github.com/xoxor4d/iw3xo-dev
 void* __cdecl R_CreateDynamicBuffers_hook() {
 	if (r_increase_render_buffers && r_increase_render_buffers->current.boolean) {
@@ -100,6 +107,22 @@ void InfinitePerspectiveMatrix(const float tan_half_fov_x, const float tan_half_
 	(*mtx)[14] = 0.99951171875f * -z_near;
 }
 
+bool ShouldSkipGun(const char* effectName) {
+	if (!effectName) return false;
+
+	std::string_view name{ effectName };
+
+	for (const auto& skip : g_exactSkipEffects) {
+		if (name == skip) return true;
+	}
+
+	for (const auto& skip : g_containSkipEffects) {
+		if (name.find(skip) != std::string_view::npos) return true;
+	}
+
+	return false;
+}
+
 float calculate_gunfov_with_zoom(float fov_val)
 {
 
@@ -120,15 +143,18 @@ float calculate_gunfov_with_zoom(float fov_val)
 	}
 
 	const auto weapon = BG_WeaponNames[offhand_index];
-	bool isGasWeapon = false;
+	bool should_skip = false;
 
 
 	if (cg_fov_tweaks->current.integer >= 2 && weapon) {
-		isGasWeapon = BG_WeaponNames[offhand_index]->weapType == WEAPTYPE_GAS;
+		should_skip = weapon->weapType == WEAPTYPE_GAS;
 	}
 
+	if (!should_skip && weapon && weapon->szInternalName) {
+		should_skip = ShouldSkipGun(weapon->szInternalName);
+	}
 
-	fovScale = isGasWeapon ? cg_fovScale->current.value : cg_fovScale_gun->current.value;
+	fovScale = should_skip ? cg_fovScale->current.value : cg_fovScale_gun->current.value;
 
 
 
@@ -156,7 +182,7 @@ float calculate_gunfov_with_zoom(float fov_val)
 	}
 
 
-	calc_fov = isGasWeapon ? cg_fov->current.value : fov_val;
+	calc_fov = should_skip ? cg_fov->current.value : fov_val;
 	if (weapon->aimDownSight)
 	{
 		if (cgs->predictedPlayerState.fWeaponPosFrac == 1.0f)
@@ -594,7 +620,32 @@ void R_ChangeDepthHackNearClip(uintptr_t a1, unsigned int depthHackFlags) {
 
 }
 
+#include "IniReader.h"
+
+void LoadSkipEffects() {
+	CIniReader ini;
+
+
+	for (int i = 0; ; ++i) {
+		auto key = "cg_fov_gun_contain_skip" + std::to_string(i);
+		auto value = ini.ReadString("FOV Tweaks", key.c_str(), "NULL", false);
+		if (value == "NULL") break;
+		g_containSkipEffects.push_back(value);
+	}
+
+
+	for (int i = 0; ; ++i) {
+		auto key = "cg_fov_gun_skip" + std::to_string(i);
+		auto value = ini.ReadString("FOV Tweaks", key.c_str(), "NULL", false);
+		if (value == "NULL") break;
+		g_exactSkipEffects.push_back(value);
+	}
+}
+
 void PatchT4E_Render() {
+
+	LoadSkipEffects();
+	
 	Memory::VP::Nop(0x0071A55C, 3);
 
 	cg_fov_gun = Dvar_RegisterFloat("cg_fov_gun", 65.f, 65.f, 120.f, DVAR_FLAG_ARCHIVE,"Adjust gun fov separately (wont effect world fov)");
