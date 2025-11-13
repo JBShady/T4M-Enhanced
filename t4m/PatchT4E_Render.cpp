@@ -21,7 +21,7 @@ dvar_t* r_buf_preTessIndexBuffer = nullptr;
 
 dvar_t* cg_fov_tweaks;
 dvar_t* cg_fov_gun;
-
+dvar_t* cg_fovScale_gun;
 // Raises limits of several buffers, reference taken from iw3xo-dev by xoxor4d https://github.com/xoxor4d/iw3xo-dev
 void* __cdecl R_CreateDynamicBuffers_hook() {
 	if (r_increase_render_buffers && r_increase_render_buffers->current.boolean) {
@@ -102,16 +102,35 @@ void InfinitePerspectiveMatrix(const float tan_half_fov_x, const float tan_half_
 
 float calculate_gunfov_with_zoom(float fov_val)
 {
+
+	WeaponDef** BG_WeaponNames = (WeaponDef**)0x8F6770;
 	float calc_fov = 80.0f;
 	const auto& cg_fovMin = *(dvar_t**)0x339CBE0;
+	const auto& cg_fov = *(dvar_t**)0x0368EB70;
+	const auto& cg_fovScale = *(dvar_t**)0x03688A04;
+	float fovScale = 1.f;
 
 	cg_s* cgs = (cg_s*)0x034732B8;
 
 	unsigned int offhand_index = cgs->predictedPlayerState.offHandIndex;
+
 	if ((cgs->predictedPlayerState.weapFlags & 2) == 0)
 	{
 		offhand_index = cgs->predictedPlayerState.weapon;
 	}
+
+	const auto weapon = BG_WeaponNames[offhand_index];
+	bool isGasWeapon = false;
+
+
+	if (cg_fov_tweaks->current.integer >= 2 && weapon) {
+		isGasWeapon = BG_WeaponNames[offhand_index]->weapType == WEAPTYPE_GAS;
+	}
+
+
+	fovScale = isGasWeapon ? cg_fovScale->current.value : cg_fovScale_gun->current.value;
+
+
 
 	// #
 	auto check_flags_and_fovmin = [&]() -> float
@@ -126,18 +145,18 @@ float calculate_gunfov_with_zoom(float fov_val)
 				calc_fov = cg_fovMin->current.value;
 			}
 
-			return calc_fov;
+			return calc_fov * fovScale;
 		};
 
-	WeaponDef** BG_WeaponNames = (WeaponDef**)0x8F6770;
 
-	const auto weapon = BG_WeaponNames[offhand_index];
+
 	if (cgs->predictedPlayerState.pm_type == 5)
 	{
 		return check_flags_and_fovmin();
 	}
 
-	calc_fov = fov_val;
+
+	calc_fov = isGasWeapon ? cg_fov->current.value : fov_val;
 	if (weapon->aimDownSight)
 	{
 		if (cgs->predictedPlayerState.fWeaponPosFrac == 1.0f)
@@ -218,11 +237,20 @@ struct SVEq {
 	}
 };
 
-static std::unordered_set<std::string_view, SVHash, SVEq> g_viewmodelEffectNames;
+static std::unordered_set<std::string> g_viewmodelEffectNames;
+
+// need to figure out when its safe to call this
+void ClearViewModelEffects() {
+
+	if (!g_viewmodelEffectNames.empty()) {
+		g_viewmodelEffectNames.clear();
+	}
+
+}
 
 dvar_t* cg_fovCompMax;
 inline bool IsViewmodelByName(const char* name) {
-	return name && g_viewmodelEffectNames.find(std::string_view{ name }) != g_viewmodelEffectNames.end();
+	return name && g_viewmodelEffectNames.contains(std::string{ name });
 }
 
 dvar_t* cg_fovComp_enable;
@@ -332,15 +360,29 @@ void R_SplitEmissives(
 }
 
 
-void CG_PlayBoltedEffect_midhook_replace(SafetyHookContext& ctx){
+void CG_PlayBoltedEffect_midhook_replace_weaponflash(SafetyHookContext& ctx) {
+	if (!cg_fov_tweaks->current.integer)
+		return;
 	FxEffectDef* flash = *(FxEffectDef**)ctx.esp;
-	g_viewmodelEffectNames.insert(std::string_view{ flash->name });
-	printf("flash %s\n", flash->name);
+
+	bool isViewModel = *(bool*)(ctx.esp + 0x18);
+	if (isViewModel) {
+		g_viewmodelEffectNames.insert(std::string{ flash->name });
+		//printf("flash %s\n", flash->name);
+	}
+}
+
+void CG_PlayBoltedEffect_midhook_replace(SafetyHookContext& ctx){
+	if (!cg_fov_tweaks->current.integer)
+		return;
+	FxEffectDef* flash = *(FxEffectDef**)ctx.esp;
+	g_viewmodelEffectNames.insert(std::string{ flash->name });
+	//printf("flash %s\n", flash->name);
 }
 
 void __stdcall R_AddCodeMeshDrawSurf_hook1_midasm_hook(GfxDrawSurf* ctx, uintptr_t esp) {
 	const char* fx_name = *(const char**)(esp + 0x18);
-	printf("FX name %s\n", fx_name);
+	//printf("FX name %s\n", fx_name);
 }
 
 void __declspec(naked) R_AddCodeMeshDrawSurf_hook1_midstub()
@@ -387,8 +429,8 @@ using mat4x4 = float[4][4];
 
 void __cdecl MatrixInverse44(const mat4x4& mat, mat4x4& dst)
 {
-	float src[16]; // [esp+0h] [ebp-78h]
-	float tmp[12]; // [esp+44h] [ebp-34h]
+	float src[16]{}; // [esp+0h] [ebp-78h]
+	float tmp[12]{}; // [esp+44h] [ebp-34h]
 
 	float det; // [esp+40h] [ebp-38h]
 	int i; // [esp+74h] [ebp-4h]
@@ -555,9 +597,11 @@ void R_ChangeDepthHackNearClip(uintptr_t a1, unsigned int depthHackFlags) {
 void PatchT4E_Render() {
 	Memory::VP::Nop(0x0071A55C, 3);
 
-	cg_fov_gun = Dvar_RegisterFloat("cg_fov_gun", 65.f, 65.f, 120.f, DVAR_FLAG_ARCHIVE);
+	cg_fov_gun = Dvar_RegisterFloat("cg_fov_gun", 65.f, 65.f, 120.f, DVAR_FLAG_ARCHIVE,"Adjust gun fov separately (wont effect world fov)");
 
-	cg_fov_tweaks = Dvar_RegisterInt(0, "cg_fov_tweaks", 0, 3, DVAR_FLAG_ARCHIVE);
+	cg_fovScale_gun = Dvar_RegisterFloat("cg_fovScale_gun", 1.f, 0.2f, 2.0f, DVAR_FLAG_ARCHIVE,"Adjust gun fovScale separately (wont effect world fov)");
+
+	cg_fov_tweaks = Dvar_RegisterInt(0, "cg_fov_tweaks", 0, 2, DVAR_FLAG_ARCHIVE,"Enable gun fov tweaks(experimental does not currently effect Weapons eject brass)\n1 = enables for all weapons\n2 = enables for all weapons expect gas type weapons such as flamethrowers");
 
 	static auto cg_fov_gun_hack = safetyhook::create_mid(0x006DE3F7, [](SafetyHookContext& ctx) {
 
@@ -571,7 +615,7 @@ void PatchT4E_Render() {
 		R_DrawEmissive(ctx.edi);
 
 		GfxViewParms* can_mod = (GfxViewParms*)ctx.edi;
-		if (cg_fov_tweaks->current.integer >= 2) {
+		if (cg_fov_tweaks->current.integer) {
 			MatrixMultiply44(
 				can_mod->viewMatrix.m,
 				can_mod->projectionMatrix.m,
@@ -601,20 +645,20 @@ void PatchT4E_Render() {
 		*(uint32_t*)(ctx.eax + 0x4) = ctx.edx;
 
 		const char* fx_name = *(const char**)(ctx.esp + 0x18);
-		printf("fx name %s\n", fx_name);
+		//printf("fx name %s\n", fx_name);
 		//if(strstr(fx_name, "muzzleflashes/") == fx_name)
 		//printf("fx name %s\n", fx_name);
 
 		if (IsViewmodelByName(fx_name) || strcmp("weapon/muzzleflashes/fx_raygun_view",fx_name) == 0) {
 			GfxDrawSurf* drawSurf = (GfxDrawSurf*)ctx.eax;
 			drawSurf->fields.unused |= 0x1;
-			printf("detected name %s %llx\n", fx_name, drawSurf->fields.unused);
+			//printf("detected name %s %llx\n", fx_name, drawSurf->fields.unused);
 		}
 		});
 
 	//Memory::VP::InjectHook(0x0071A55C, R_AddCodeMeshDrawSurf_hook1_midstub, HookType::Jump);
 
-	static auto CG_PlayBoltedEffect_call1 = safetyhook::create_mid(0x469A92, &CG_PlayBoltedEffect_midhook_replace);
+	static auto CG_PlayBoltedEffect_call1 = safetyhook::create_mid(0x469A92, &CG_PlayBoltedEffect_midhook_replace_weaponflash);
 	static auto CG_PlayBoltedEffect_call2 = safetyhook::create_mid(0x66BB44, &CG_PlayBoltedEffect_midhook_replace);
 
 	//// for testing
@@ -635,11 +679,11 @@ void PatchT4E_Render() {
 
 		});
 
-	AllocConsole();
-	FILE* fDummy;
-	freopen_s(&fDummy, "CONIN$", "r", stdin);
-	freopen_s(&fDummy, "CONOUT$", "w", stderr);
-	freopen_s(&fDummy, "CONOUT$", "w", stdout);
+	//AllocConsole();
+	//FILE* fDummy;
+	//freopen_s(&fDummy, "CONIN$", "r", stdin);
+	//freopen_s(&fDummy, "CONOUT$", "w", stderr);
+	//freopen_s(&fDummy, "CONOUT$", "w", stdout);
 
 	static auto fovcomp_backport = safetyhook::create_mid(0x00469CD6, [](SafetyHookContext& ctx) {
 		if (cg_fovComp_enable && cg_fovComp_enable->isEnabled()) {
