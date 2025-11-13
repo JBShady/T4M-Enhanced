@@ -263,7 +263,7 @@ struct SVEq {
 	}
 };
 
-static std::unordered_set<std::string> g_viewmodelEffectNames;
+static std::unordered_set<std::string_view, SVHash, SVEq> g_viewmodelEffectNames;
 
 // need to figure out when its safe to call this
 void ClearViewModelEffects() {
@@ -276,7 +276,7 @@ void ClearViewModelEffects() {
 
 dvar_t* cg_fovCompMax;
 inline bool IsViewmodelByName(const char* name) {
-	return name && g_viewmodelEffectNames.contains(std::string{ name });
+	return name && g_viewmodelEffectNames.contains(std::string_view{ name });
 }
 
 dvar_t* cg_fovComp_enable;
@@ -393,7 +393,7 @@ void CG_PlayBoltedEffect_midhook_replace_weaponflash(SafetyHookContext& ctx) {
 
 	bool isViewModel = *(bool*)(ctx.esp + 0x18);
 	if (isViewModel) {
-		g_viewmodelEffectNames.insert(std::string{ flash->name });
+		g_viewmodelEffectNames.insert(std::string_view{ flash->name });
 		//printf("flash %s\n", flash->name);
 	}
 }
@@ -402,7 +402,7 @@ void CG_PlayBoltedEffect_midhook_replace(SafetyHookContext& ctx){
 	if (!cg_fov_tweaks->current.integer)
 		return;
 	FxEffectDef* flash = *(FxEffectDef**)ctx.esp;
-	g_viewmodelEffectNames.insert(std::string{ flash->name });
+	g_viewmodelEffectNames.insert(std::string_view{ flash->name });
 	//printf("flash %s\n", flash->name);
 }
 
