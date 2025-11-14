@@ -303,7 +303,7 @@ void __cdecl CG_CalculateWeaponMovement_Debug(const cg_s* cgameGlob, float* orig
 
 	dvar_t* cg_gun_z = *(dvar_t**)0x03466074;
 
-	dvar_t* cg_fovscale = *(dvar_t**)0x03688A04;
+	dvar_t* cg_fovscale = cg_fov_tweaks->isEnabled() ? cg_fovScale_gun : *(dvar_t**)0x03688A04;
 
 	float fovscale = cg_fovComp_fovscale->isEnabled() ? cg_fovscale->current.value : 1.f;
 
