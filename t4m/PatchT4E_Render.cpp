@@ -295,7 +295,7 @@ void __cdecl CG_CalculateWeaponMovement_Debug(const cg_s* cgameGlob, float* orig
 	float fovcomp_z;
 	float fovCoeff;
 
-	dvar_t* cg_fov = *(dvar_t**)0x0368EB70;
+	dvar_t* cg_fov = cg_fov_tweaks->isEnabled() ? cg_fov_gun : *(dvar_t**)0x0368EB70;
 
 	dvar_t* cg_gun_x = *(dvar_t**)0x034660EC;
 
@@ -737,7 +737,7 @@ void PatchT4E_Render() {
 	//freopen_s(&fDummy, "CONOUT$", "w", stdout);
 
 	static auto fovcomp_backport = safetyhook::create_mid(0x00469CD6, [](SafetyHookContext& ctx) {
-		if (cg_fovComp_enable && cg_fovComp_enable->isEnabled()) {
+		if ((cg_fovComp_enable && cg_fovComp_enable->current.integer) && (!cg_fov_tweaks->current.integer || cg_fovComp_enable->current.integer >= 2)) {
 			float* origin = (float*)(ctx.esp + 0x28);
 
 			CG_CalculateWeaponMovement_Debug((cg_s*)(0x034732B8), origin);
@@ -747,7 +747,7 @@ void PatchT4E_Render() {
 
 	cg_fovComp_fovscale = Dvar_RegisterBool(false, "cg_fovComp_fovscale", DVAR_FLAG_ARCHIVE, "Takes into account fovscale for cg_fovComp");
 
-	cg_fovComp_enable = Dvar_RegisterBool(false, "cg_fovComp_enable", DVAR_FLAG_ARCHIVE, "Enables backported fovComp behaviour from Black Ops 1");
+	cg_fovComp_enable = Dvar_RegisterInt(0, "cg_fovComp_enable", 0, 2, DVAR_FLAG_ARCHIVE, "Enables backported fovComp behavior from Black Ops 1\n1 = enables the behavior but gets ignored if cg_fov_tweaks is enabled\n2 = enables the behavior but uses cg_fov_gun rather than cg_fov if cg_fov_tweaks is enabled");
 
 	cg_fov_default = Dvar_RegisterFloat("cg_fov_default", 65.f, 10.f, 160.f, DVAR_FLAG_ARCHIVE, "User default field of view angle in degrees");
 
