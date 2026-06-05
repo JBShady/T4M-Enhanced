@@ -139,7 +139,9 @@ popd</Command>
     <ClInclude Include="include\MemoryMgr.h" />
     <ClInclude Include="include\mini\ini.h" />
     <ClInclude Include="include\safetyhook.hpp" />
+    <ClInclude Include="include\safetyhook_inline.hpp" />
     <ClInclude Include="include\Stdinc.hpp" />
+    <ClInclude Include="include\usercaller.hpp" />
     <ClInclude Include="include\Zydis.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Script.h" />
@@ -151,6 +153,7 @@ popd</Command>
   <ItemGroup>
     <ClCompile Include="include\cod\game.cpp" />
     <ClCompile Include="include\safetyhook.cpp" />
+    <ClCompile Include="include\usercaller.cpp" />
     <ClCompile Include="include\Zydis.c" />
     <ClCompile Include="LAAPatch.cpp" />
     <ClCompile Include="Main.cpp">
