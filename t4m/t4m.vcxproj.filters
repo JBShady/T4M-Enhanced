@@ -75,6 +75,9 @@
     <ClCompile Include="PatchT4E_Shaders.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PatchT4E_Rumble.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="PatchT4E_Weapons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -193,6 +196,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\usercaller.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\xbyak_bin2hex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\xbyak_mnemonic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\xbyak_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\xbyak.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

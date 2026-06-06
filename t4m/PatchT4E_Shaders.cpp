@@ -234,11 +234,13 @@ void __cdecl EndFrame() {
 }
 
 uintptr_t SCR_UpdateFrame_addr;
+void PatchT4E_Rumble_Frame();
 
 void __cdecl SCR_UpdateFrame() {
 
 	UpdateSafeAreaLive();
 	cdecl_call<void>(SCR_UpdateFrame_addr);
+	PatchT4E_Rumble_Frame();
 }
 
 void PatchT4E_Shaders() {

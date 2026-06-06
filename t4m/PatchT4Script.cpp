@@ -73,9 +73,17 @@ typedef struct
 	int developerOnly;
 } scr_funcdef_t;
 
+typedef struct
+{
+	const char* functionName;
+	scr_function_t functionCall;
+	int developerOnly;
+} scr_methdef_t;
+
 
 #pragma region setupFunctions
 static std::map<std::string, scr_funcdef_t> scriptFunctions;
+static std::map<std::string, scr_methdef_t> scriptMethods;
 
 scr_function_t Scr_GetCustomFunction(const char** name, int* isDeveloper)
 {
@@ -101,6 +109,31 @@ void Scr_DeclareFunction(const char* name, scr_function_t func, bool developerOn
 	funcDef.developerOnly = (developerOnly) ? 1 : 0;
 
 	scriptFunctions[name] = funcDef;
+}
+
+scr_function_t Scr_GetCustomMethod(const char** name, int* isDeveloper)
+{
+	scr_methdef_t method = scriptMethods[*name];
+
+	if (method.functionName)
+	{
+		*name = method.functionName;
+		*isDeveloper = method.developerOnly;
+
+		return method.functionCall;
+	}
+
+	return NULL;
+}
+
+void Scr_DeclareMethod(const char* name, scr_function_t func, bool developerOnly = false)
+{
+	scr_methdef_t methodDef;
+	methodDef.functionName = name;
+	methodDef.functionCall = func;
+	methodDef.developerOnly = developerOnly ? 1 : 0;
+
+	scriptMethods[name] = methodDef;
 }
 #pragma endregion setupFunctions
 
@@ -179,6 +212,16 @@ int Scr_GetMethod(int *type, const char **pName)
 {
 	// also aids and again do not care. #3
 	int function;
+
+	if (scriptMethods.find(std::string(*pName)) != scriptMethods.end())
+	{
+		function = (int)Scr_GetCustomMethod(pName, type);
+
+		if (developer_funcdump->current.boolean && function != 0)
+			Com_Printf(0, "[GSC] Method: %s\nType: %i\nAddress: 0x%X\n\n", *pName, *type, function);
+
+		return function;
+	}
 
 	*type = 0;
 	function = Player_GetMethod(pName);
@@ -337,6 +380,7 @@ int __stdcall DisablePushPlayer() {
 
 void PatchT4_Script()
 {
+	void PatchT4E_Rumble_RegisterScriptBindings();
 	developer_funcdump = Dvar_RegisterBool(0, "developer_funcdump", 0, "Dump script function information (engine)");
 
 	cg_drawHealthCount = Dvar_RegisterBool(0, "cg_drawHealthCount", 0, "Draw developer health counter in solo (requires map restart)"); // requires NZ remastererd mod
@@ -375,6 +419,7 @@ void PatchT4_Script()
 	Detours::X86::DetourFunction((PBYTE)0x00682DAF, (PBYTE)&Scr_GetFunction_Hook, Detours::X86Option::USE_CALL);
 	Detours::X86::DetourFunction((PBYTE)0x00683043, (PBYTE)&Scr_GetMethod_Hook, Detours::X86Option::USE_CALL);
 	Scr_DeclareFunction("printlnconsole", GScr_PrintLnConsole);
+	PatchT4E_Rumble_RegisterScriptBindings();
 
 	// i hate asm and safetyhook midhook ftw -clippy95
 	static auto PlayerCmd_GiveMaxAmmo_midhook = safetyhook::create_mid(0x4EE157, [](SafetyHookContext& ctx) {

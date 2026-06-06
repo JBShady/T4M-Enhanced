@@ -142,6 +142,10 @@ popd</Command>
     <ClInclude Include="include\safetyhook_inline.hpp" />
     <ClInclude Include="include\Stdinc.hpp" />
     <ClInclude Include="include\usercaller.hpp" />
+    <ClInclude Include="include\xbyak.h" />
+    <ClInclude Include="include\xbyak_bin2hex.h" />
+    <ClInclude Include="include\xbyak_mnemonic.h" />
+    <ClInclude Include="include\xbyak_util.h" />
     <ClInclude Include="include\Zydis.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Script.h" />
@@ -172,6 +176,7 @@ popd</Command>
     <ClCompile Include="PatchT4E_Pathing.cpp" />
     <ClCompile Include="PatchT4E_Render.cpp" />
     <ClCompile Include="PatchT4E_Shaders.cpp" />
+    <ClCompile Include="PatchT4E_Rumble.cpp" />
     <ClCompile Include="PatchT4E_Weapons.cpp" />
     <ClCompile Include="PatchT4FileDebug.cpp" />
     <ClCompile Include="PatchT4Load.cpp" />

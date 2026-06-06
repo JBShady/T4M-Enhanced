@@ -325,6 +325,8 @@ struct scr_entref_t
 };
 
 typedef void(__cdecl * scr_function_t)(scr_entref_t);
+void Scr_DeclareFunction(const char* name, scr_function_t func, bool developerOnly);
+void Scr_DeclareMethod(const char* name, scr_function_t func, bool developerOnly);
 
 // inline cmd functions
 extern DWORD* cmd_id;
@@ -345,6 +347,7 @@ inline char *Cmd_Argv(int arg)
 }
 
 int __cdecl Scr_GetNumParam(scriptInstance_t inst);
+const char* Scr_GetString(uint32_t index, scriptInstance_t instance);
 
 
 /*

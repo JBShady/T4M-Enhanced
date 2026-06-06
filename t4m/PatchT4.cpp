@@ -34,6 +34,7 @@ void PatchT4E_Weapons();
 void PatchT4E_Pathing();
 
 void PatchT4E_Input();
+void PatchT4E_Rumble();
 
 void PatchT4E_UI();
 
@@ -66,6 +67,7 @@ void PatchT4()
 	PatchT4E_Pathing();
 
 	PatchT4E_Input();
+	PatchT4E_Rumble();
 
 	// check if game got started using steam
 	if (!GetModuleHandle("gameoverlayrenderer.dll"))
