@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -14,6 +15,10 @@
 #define UC_CDECL __cdecl
 #else
 #define UC_CDECL
+#endif
+
+#if defined(_MSC_VER)
+#pragma pack(push, 8)
 #endif
 
 namespace uc
@@ -116,6 +121,9 @@ namespace uc
             bool runtime_target{};
             std::vector<arg_desc> args{};
         };
+
+        static_assert(offsetof(abi_desc, runtime_target) == 8, "UserCaller: abi_desc.runtime_target offset changed.");
+        static_assert(offsetof(abi_desc, args) == 12, "UserCaller: abi_desc.args offset changed.");
 
         struct code_block
         {
@@ -517,3 +525,7 @@ namespace uc
         patch_call(reinterpret_cast<void*>(call_site), new_target);
     }
 }
+
+#if defined(_MSC_VER)
+#pragma pack(pop)
+#endif

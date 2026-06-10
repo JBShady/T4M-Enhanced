@@ -3,6 +3,7 @@
 #include "T4.h"
 
 #include "include\\safetyhook.hpp"
+#include "include\\usercaller.hpp"
 #include "include\\cod\\clientscript\\cscr_vm.hpp"
 
 #include <climits>
@@ -102,6 +103,28 @@ namespace
 	static game::GamePad* s_gamePads = reinterpret_cast<game::GamePad*>(0x022991A8);
 
 	static SafetyHookInline Weapon_Melee_hook{};
+	static const auto Scr_GetVector_Usercall = uc::abi<
+		uc::void_ret<void>,
+		uc::eax_arg<scriptInstance_t>,
+		uc::ecx_arg<float*>,
+		uc::stack_arg<unsigned int>
+	>::make(0x0069A220);
+	static const auto Scr_Error_Usercall = uc::abi<
+		uc::void_ret<void>,
+		uc::ecx_arg<const char*>,
+		uc::edi_arg<scriptInstance_t>,
+		uc::stack_arg<int>
+	>::make(0x0069AB70);
+	static const auto Scr_ObjectError_Usercall = uc::abi<
+		uc::void_ret<void>,
+		uc::eax_arg<scriptInstance_t>,
+		uc::ecx_arg<const char*>
+	>::make(0x0069AC30);
+	static const auto CG_GetEntity_Usercall = uc::abi<
+		uc::eax_ret<game::centity_s*>,
+		uc::eax_arg<int>,
+		uc::ecx_arg<int>
+	>::make(0x004010D0);
 
 	const char* Scr_GetStringServer(const unsigned int index)
 	{
@@ -115,17 +138,17 @@ namespace
 
 	void Scr_GetVectorServer(float* value, const unsigned int index)
 	{
-		cdecl_call<void>(0x0069A220, game::SCRIPTINSTANCE_SERVER, value, index);
+		Scr_GetVector_Usercall(SCRIPTINSTANCE_SERVER, value, index);
 	}
 
 	void Scr_ErrorServer(const char* message)
 	{
-		cdecl_call<void>(0x0069AB70, message, game::SCRIPTINSTANCE_SERVER, 0);
+		Scr_Error_Usercall(message, SCRIPTINSTANCE_SERVER, 0);
 	}
 
 	void Scr_ObjectErrorServer(const char* message)
 	{
-		cdecl_call<void>(0x0069AC30, game::SCRIPTINSTANCE_SERVER, message);
+		Scr_ObjectError_Usercall(SCRIPTINSTANCE_SERVER, message);
 	}
 
 	inline game::cg_s* GetCg()
@@ -135,7 +158,7 @@ namespace
 
 	inline game::centity_s* CG_GetEntity(const int localClientNum, const unsigned int entNum)
 	{
-		return cdecl_call<game::centity_s*>(0x004010D0, localClientNum, entNum);
+		return CG_GetEntity_Usercall(localClientNum, static_cast<int>(entNum));
 	}
 
 	float Clamp01(const float value)
@@ -1381,10 +1404,10 @@ void GScr_StopRumble(scr_entref_t entref)
 
 void PatchT4E_Rumble_RegisterScriptBindings()
 {
-	Scr_DeclareFunction("PreCacheRumble", GScr_PreCacheRumble, false);
-	Scr_DeclareFunction("PlayRumbleOnPos", GScr_PlayRumbleOnPos, false);
-	Scr_DeclareFunction("PlayLoopRumbleOnPos", GScr_PlayLoopRumbleOnPos, false);
-	Scr_DeclareFunction("StopAllRumbles", GScr_StopAllRumbles, false);
+	Scr_DeclareFunction("precacherumble", GScr_PreCacheRumble, false);
+	Scr_DeclareFunction("playrumbleonposition", GScr_PlayRumbleOnPos, false);
+	Scr_DeclareFunction("playrumblelooponposition", GScr_PlayLoopRumbleOnPos, false);
+	Scr_DeclareFunction("stopallrumbles", GScr_StopAllRumbles, false);
 
 	Scr_DeclareMethod("PlayRumble", GScr_PlayRumble, false);
 	Scr_DeclareMethod("PlayLoopRumble", GScr_PlayLoopRumble, false);
@@ -1411,9 +1434,9 @@ void PatchT4E_Rumble()
 	Cmd_AddCommand("playrumble", CG_PlayRumble_f);
 	Cmd_AddCommand("testrumblemotors", CG_TestRumbleMotors_f);
 
-	static auto bullet_fire_rumble = safetyhook::create_mid(0x004E6868, [](SafetyHookContext& ctx)
+	static auto weapon_fire_rumble = safetyhook::create_mid(0x005516A1, [](SafetyHookContext& ctx)
 	{
-		PlayWeaponFireRumble(reinterpret_cast<gentity_s*>(ctx.edi), reinterpret_cast<game::weaponParms*>(ctx.esi)->weapDef);
+		PlayWeaponFireRumble(reinterpret_cast<gentity_s*>(ctx.edi), reinterpret_cast<const game::WeaponDef*>(ctx.ebx));
 	});
 
 	Weapon_Melee_hook = safetyhook::create_inline(0x005501C0, Weapon_Melee_Hook);
