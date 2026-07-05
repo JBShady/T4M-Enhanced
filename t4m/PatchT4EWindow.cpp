@@ -263,9 +263,9 @@ void PatchT4E_Window() {
 
 	safeArea_updateLive = Dvar_RegisterInt(2, "safeArea_updateLive", 0, 3, DVAR_FLAG_ARCHIVE,
 		"Automatically updates the viewport when safearea is updated\n"
-		"1 = applies safearea only when cl_paused == 0 && cl_ingame == 0, otherwise both = 1.f\n"
-		"2 = same as 1 but only sets vertical = 1.f when paused/running\n"
-		"3 = applies safearea always");
+		"1 = Applies safe area only when cl_paused == 0 && cl_ingame == 0, otherwise both = 1.f\n"
+		"2 = Same as 1, but only sets vertical safe area = 1.f when paused/ingame\n"
+		"3 = Applies safe area always");
 	safeArea_horizontal = Dvar_RegisterFloat("safeArea_horizontal", 1.0f, 0.15f, 1.0f, DVAR_FLAG_ARCHIVE, "Horizontal safe area as a fraction of the screen width");
 	safeArea_vertical = Dvar_RegisterFloat("safeArea_vertical", 1.0f, 0.15f, 1.0f, DVAR_FLAG_ARCHIVE, "Vertical safe area as a fraction of the screen height");
 
