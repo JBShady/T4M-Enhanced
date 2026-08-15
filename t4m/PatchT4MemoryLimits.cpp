@@ -1,6 +1,6 @@
 // ==========================================================
 // T4M project
-// 
+//
 // Component: clientdll
 // Purpose: Increasing memory pool sizes
 //
