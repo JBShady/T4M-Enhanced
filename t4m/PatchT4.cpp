@@ -89,7 +89,10 @@ void PatchT4_PreLoad()
 	// as done in Juiced Patch https://github.com/kobraworksmodding/Saints-Row-2-Juiced-Patch/blob/main/Monkey%20Patch/Audio/XACT.cpp , although SR2 uses XACT and XACT's version is supposed to be inline with XAudio,
 	// in SR2 this might cause a rare crash to occur that I've fixed there, hopefully this doesn't raise much issues - Clippy95
 
-	if (ini.ReadInteger("Fixes", "UseFixedXAudio", 1) != 0){
+	// Under WINE/Proton this swaps the prefix's native XAudio2_0 for WINE's FAudio-based xaudio2_3, which drops and cuts out sounds (explosions go missing),
+	// so default it to off there. An explicit ini value still wins.
+	bool isWine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != nullptr;
+	if (ini.ReadInteger("Fixes", "UseFixedXAudio", isWine ? 0 : 1) != 0){
 		GUID xaudio = { 0x4c5e637a, 0x16c7, 0x4de3, 0x9c, 0x46, 0x5e, 0xd2, 0x21, 0x81, 0x96, 0x2d }; // XAudio 2.3
 		Memory::VP::Patch(0x0089DA98, xaudio);
 	}
@@ -97,7 +100,9 @@ void PatchT4_PreLoad()
 	Memory::VP::Patch<uint32_t>((0x005E3CD1 + 6), 15728640);
 
 	// Remove duplicate calls in serverthread
-	Memory::VP::Nop(0x00636686, 0x2D);
+	// Can be turned off in the ini: with it applied, loading a map hangs on a black screen under WINE/Proton
+	if (ini.ReadInteger("Fixes", "RemoveDuplicateServerThreadCalls", 1) != 0)
+		Memory::VP::Nop(0x00636686, 0x2D);
 
 }
 
